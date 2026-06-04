@@ -79,9 +79,15 @@ if page == "Abstract":
         "(near-zero correlation); H2 (large-move days ⇒ higher activity) is "
         "**supported** (p ≈ 5·10⁻³¹); H3 (imbalance higher on high-vol days) is "
         "**supported** (p ≈ 0.006).")
-    st.markdown("**Team contributions (placeholders):** Member 1 — pipeline & cleaning; "
-                "Member 2 — features & statistics; Member 3 — visualisation & "
-                "hypotheses; Member 4 — web interfaces & report.")
+    st.markdown(
+        "**Team contributions:**\n\n"
+        "- **Amirkhan Gareev** — data analysis, dataset exploration, feature "
+        "engineering, descriptive statistics, EDA interpretation, figures and tables.\n"
+        "- **Timur Rozovel** — Streamlit interface, FastAPI REST API, Docker/Render "
+        "deployment, API testing, web interface validation.\n"
+        "- **Konstantin Ryadinskiy** — project coordination, README and final "
+        "documentation, public URL integration, Streamlit visual check, final "
+        "presentation preparation.")
 
 elif page == "Dataset Description":
     st.title("Dataset Description")

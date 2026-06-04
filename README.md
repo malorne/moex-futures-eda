@@ -271,5 +271,12 @@ claimed.
 | 11 | FastAPI: ≥1 GET with ≥2 args, ≥1 POST | `app/api.py` (`GET /data`, `POST /data`) |
 | 12 | Web deployment (containerised, public-ready) | `Dockerfile.*`, `docker-compose.yml`, `render.yaml`, `Procfile`, `.streamlit/`, *Web deployment* section |
 
-> Replace the placeholder author names (Team member 1–4) in the Abstract with the real
-> team members and their contributions before submission.
+---
+
+## Team
+
+| Member | Contribution |
+|---|---|
+| **Amirkhan Gareev** | Data analysis, dataset exploration, feature engineering, descriptive statistics, EDA interpretation, figures and tables. |
+| **Timur Rozovel** | Streamlit interface, FastAPI REST API, Docker/Render deployment, API testing, web interface validation. |
+| **Konstantin Ryadinskiy** | Project coordination, README and final documentation, public URL integration, Streamlit visual check, final presentation preparation. |
