@@ -72,8 +72,9 @@ moex/
 ├── render.yaml                 # Render.com Blueprint (both services)
 ├── Procfile                    # Heroku/Render native start (API)
 ├── .streamlit/config.toml      # headless server config
-├── requirements.txt            # full dev dependencies
-├── requirements-app.txt        # lean runtime deps (used by Docker)
+├── requirements.txt            # lean RUNTIME deps (apps; used by Streamlit Cloud)
+├── requirements-app.txt        # same lean set, used by the Docker images
+├── requirements-dev.txt        # full pipeline/notebook deps (superset)
 └── README.md
 ```
 
@@ -82,9 +83,9 @@ moex/
 ## How to run (local development)
 
 ```bash
-# 1) Environment
+# 1) Environment  (apps need requirements.txt; full pipeline/notebook needs requirements-dev.txt)
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-dev.txt
 
 # 2) Build the datasets from the raw archives (memory-safe, chunked)
 .venv/bin/python scripts/build_year.py        # download + aggregate 12 months

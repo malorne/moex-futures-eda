@@ -17,6 +17,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile.streamlit
     plan: free
+    healthCheckPath: /_stcore/health
     envVars:
       - key: MOEX_ROOT
         value: /app

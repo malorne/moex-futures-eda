@@ -1,0 +1,10 @@
+# DEV / pipeline / notebook dependencies (superset of the runtime requirements).
+# Use this to run the full pipeline: download -> aggregate -> features -> notebook.
+-r requirements.txt
+
+py7zr>=0.21          # extract the *_fut_deal.7z archives
+requests>=2.31       # optional HTTP helpers
+jupyter>=1.0         # run / render the notebook
+nbconvert>=7.10
+nbformat>=5.9        # build_notebook.py / make_report_artifacts.py
+ipykernel>=6.29
