@@ -218,6 +218,24 @@ Streamlit Community Cloud (UI).
 > daemon), so the container build itself is unverified there; the Compose file is
 > syntactically validated and the apps are verified to run via the same start commands.
 
+### Public Streamlit visual check
+
+All 8 sidebar sections were opened on the **public** app
+(https://moex-futures-eda.streamlit.app) in a headless browser and full-page
+screenshotted — **8/8 render without errors**. Images are in `reports/screenshots/`
+(reproducible via `scripts/streamlit_visual_check.py`, which needs `playwright`).
+
+| # | Page | Screenshot | Result |
+|---|---|---|---|
+| 1 | Abstract | `reports/screenshots/01_Abstract.png` | ✅ |
+| 2 | Dataset Description | `reports/screenshots/02_Dataset_Description.png` | ✅ |
+| 3 | Data Cleaning | `reports/screenshots/03_Data_Cleaning.png` | ✅ |
+| 4 | Descriptive Statistics | `reports/screenshots/04_Descriptive_Statistics.png` | ✅ |
+| 5 | Basic Plots | `reports/screenshots/05_Basic_Plots.png` | ✅ |
+| 6 | Detailed Overview | `reports/screenshots/06_Detailed_Overview.png` | ✅ |
+| 7 | Hypothesis Testing | `reports/screenshots/07_Hypothesis_Testing.png` | ✅ |
+| 8 | Discussion / Conclusion | `reports/screenshots/08_Discussion_Conclusion.png` | ✅ |
+
 ---
 
 ## Key findings
