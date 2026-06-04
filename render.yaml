@@ -1,0 +1,22 @@
+# Render.com Blueprint: deploys BOTH services as Docker web services.
+# Deploy: push this repo to GitHub, then in Render -> "New +" -> "Blueprint",
+# pick the repo. Render builds the Dockerfiles and gives each a public URL.
+services:
+  - type: web
+    name: moex-eda-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: MOEX_ROOT
+        value: /app
+
+  - type: web
+    name: moex-eda-streamlit
+    runtime: docker
+    dockerfilePath: ./Dockerfile.streamlit
+    plan: free
+    envVars:
+      - key: MOEX_ROOT
+        value: /app

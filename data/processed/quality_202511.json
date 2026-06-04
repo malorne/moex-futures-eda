@@ -1,0 +1,40 @@
+{
+  "rows": 30981150,
+  "n_chunks": 11,
+  "nan_by_column": {
+    "#SYMBOL": 0,
+    "DIRECTION": 0,
+    "ID_DEAL": 0,
+    "MOMENT": 0,
+    "OPEN_POS": 0,
+    "PRICE_DEAL": 0,
+    "SYSTEM": 0,
+    "VOLUME": 0,
+    "date_int": 0
+  },
+  "moment_min": 20251031190500000,
+  "moment_max": 20251128184959867,
+  "datetime_min": "2025-10-31 19:05:00",
+  "datetime_max": "2025-11-28 18:49:59.867000",
+  "price_min": 0.645,
+  "price_max": 345825.0,
+  "price_le0": 0,
+  "volume_min": 1,
+  "volume_max": 29340,
+  "volume_le0": 0,
+  "open_pos_min": 0,
+  "open_pos_max": 37274424,
+  "open_pos_lt0": 0,
+  "direction_values": [
+    "B",
+    "S"
+  ],
+  "system_values": [
+    "F"
+  ],
+  "n_unique_symbols": 396,
+  "n_id_deal_total": 30981150,
+  "n_id_deal_unique": 30981150,
+  "n_id_deal_duplicates": 0,
+  "elapsed_sec": 21.8
+}

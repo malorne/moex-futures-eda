@@ -1,0 +1,12 @@
+# Keep the build context small. data/processed and reports ARE needed (copied
+# explicitly in the Dockerfiles), so they are not ignored here.
+.venv/
+.git/
+.gitignore
+data/raw/
+data/interim/
+**/__pycache__/
+*.7z
+*.pyc
+.DS_Store
+notebooks/.ipynb_checkpoints/

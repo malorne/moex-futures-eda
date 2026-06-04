@@ -1,0 +1,38 @@
+{
+  "H1_corr": [
+    {
+      "liquidity": "avg_volume",
+      "volatility_metric": "volatility",
+      "pearson_logx": 0.022,
+      "spearman": 0.003
+    },
+    {
+      "liquidity": "avg_volume",
+      "volatility_metric": "mean_rel_range",
+      "pearson_logx": 0.069,
+      "spearman": 0.049
+    },
+    {
+      "liquidity": "avg_trades",
+      "volatility_metric": "volatility",
+      "pearson_logx": -0.103,
+      "spearman": -0.131
+    },
+    {
+      "liquidity": "avg_trades",
+      "volatility_metric": "mean_rel_range",
+      "pearson_logx": -0.083,
+      "spearman": -0.103
+    }
+  ],
+  "H2_test": {
+    "mannwhitney_U": 248644.5,
+    "p_value": 4.9532608743703045e-31,
+    "z_vol_large_mean": 0.8561737772291387,
+    "z_vol_normal_mean": -0.09747518355777754
+  },
+  "H3_test": {
+    "mannwhitney_U": 183506.0,
+    "p_value": 0.005888981209946567
+  }
+}

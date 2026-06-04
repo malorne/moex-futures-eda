@@ -1,0 +1,14 @@
+# Streamlit configuration for headless / server deployment.
+[server]
+headless = true
+address = "0.0.0.0"
+port = 8501
+# CORS/XSRF disabled so the app works behind a reverse proxy / PaaS (Render, VPS).
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"

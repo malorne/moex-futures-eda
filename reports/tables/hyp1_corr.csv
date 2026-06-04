@@ -1,0 +1,5 @@
+liquidity,volatility_metric,pearson_logx,spearman
+avg_volume,volatility,0.022,0.003
+avg_volume,mean_rel_range,0.069,0.049
+avg_trades,volatility,-0.103,-0.131
+avg_trades,mean_rel_range,-0.083,-0.103
