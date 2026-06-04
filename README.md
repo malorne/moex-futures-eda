@@ -66,13 +66,20 @@ moex/
 │   ├── streamlit_app.py        # web interface mirroring the notebook
 │   └── api.py                  # FastAPI service
 ├── reports/                    # figures/*.png, tables/*.csv, hypothesis_results.json
-├── requirements.txt
+├── Dockerfile.api              # FastAPI image
+├── Dockerfile.streamlit        # Streamlit image
+├── docker-compose.yml          # both services (streamlit:8501, api:8000)
+├── render.yaml                 # Render.com Blueprint (both services)
+├── Procfile                    # Heroku/Render native start (API)
+├── .streamlit/config.toml      # headless server config
+├── requirements.txt            # full dev dependencies
+├── requirements-app.txt        # lean runtime deps (used by Docker)
 └── README.md
 ```
 
 ---
 
-## How to run
+## How to run (local development)
 
 ```bash
 # 1) Environment
@@ -100,6 +107,90 @@ python3 -m venv .venv
 The pipeline never loads a full raw file into memory: each ~1.5–2.6 GB monthly CSV is
 streamed in chunks (`pandas.read_csv(chunksize=...)`), aggregated, and the extracted
 CSV is deleted before the next month.
+
+---
+
+## Web deployment
+
+The web interface is containerised and **public-ready** — it is not limited to
+`localhost`. Both services read only the aggregated `data/processed/*.parquet`
+(~11 MB) bundled into the images; the multi-GB raw archives are never shipped.
+
+| Service | Local URL | Container port |
+|---|---|---|
+| Streamlit app | http://localhost:8501 | 8501 |
+| FastAPI + Swagger | http://localhost:8000/docs | 8000 |
+
+**Option A — Docker on any VPS/server (self-host, recommended):**
+
+```bash
+docker compose up --build -d     # build both images, run detached
+docker compose ps                # status   |   docker compose logs -f
+docker compose down              # stop
+```
+
+Open it:
+
+```text
+Local machine:    http://localhost:8501        http://localhost:8000/docs
+Server public IP: http://SERVER_IP:8501        http://SERVER_IP:8000/docs
+Via a domain:     https://your-domain          https://your-domain/docs   (reverse proxy)
+```
+
+**Option B — FastAPI on Render.com (free public URL):** push this repo to GitHub,
+then Render → *New → Blueprint* → select the repo (`render.yaml` defines both Docker
+web services; `$PORT` is injected automatically). The API alone can also be deployed
+with `Dockerfile.api` or `Procfile`.
+
+**Option C — Streamlit on Streamlit Community Cloud (free public URL):** push to
+GitHub, then share.streamlit.io → *New app* → main file `app/streamlit_app.py`,
+requirements `requirements.txt`. The committed Parquet + `reports/` tables make the
+app fully functional online (the hourly chart falls back to a precomputed table).
+
+Fill these in once deployed:
+
+```text
+### Streamlit app
+Public URL: <add after deploying to Streamlit Cloud>
+
+### FastAPI
+Public API URL: <add after deploying to Render>
+Swagger docs:   <public API URL>/docs
+
+Example GET:  <public API URL>/data?symbol=IMOEXF&limit=10
+Example POST: curl -X POST <public API URL>/data -H "Content-Type: application/json" \
+              -d '{"date":"2025-06-02","symbol":"IMOEXF","open_price":100,"high_price":101,
+                   "low_price":99.5,"close_price":100.5,"total_volume":1234,"num_trades":56}'
+```
+
+---
+
+## Web interface status
+
+```text
+Local development (BUILT AND TESTED in this environment):
+- Streamlit:    http://localhost:8501       -> all 8 pages render without errors
+- FastAPI:      http://localhost:8000       -> all endpoints return expected codes
+- Swagger docs: http://localhost:8000/docs  -> loads (HTTP 200)
+  Checked: GET / (200), GET /symbols (200), GET /data?symbol=&limit= (200),
+           GET /stats/{symbol} (200; 404 for unknown), POST /data (201), /docs (200)
+
+Prepared for deployment (files present; `docker compose config` validated):
+- Dockerfile.api, Dockerfile.streamlit, docker-compose.yml
+- render.yaml (Render Blueprint), Procfile, .streamlit/config.toml, requirements-app.txt
+- git repo initialised with an initial commit (ready to push to GitHub)
+
+Public deployment:
+- Streamlit: NOT deployed from this environment (needs your Streamlit Cloud + GitHub login)
+- FastAPI:   NOT deployed from this environment (needs your Render/Railway + GitHub login)
+
+How to make it public: push to GitHub, then deploy via Render Blueprint (API) and
+Streamlit Community Cloud (app); or run `docker compose up --build -d` on a VPS.
+```
+
+> Docker images could not be **built** inside the authoring environment (no Docker
+> daemon), so the container build itself is unverified there; the Compose file is
+> syntactically validated and the apps are verified to run via the same start commands.
 
 ---
 
@@ -134,6 +225,7 @@ claimed.
 | 9 | Discussion after each step / each plot | Markdown after every section & figure |
 | 10 | Streamlit web interface equivalent to the notebook | `app/streamlit_app.py` |
 | 11 | FastAPI: ≥1 GET with ≥2 args, ≥1 POST | `app/api.py` (`GET /data`, `POST /data`) |
+| 12 | Web deployment (containerised, public-ready) | `Dockerfile.*`, `docker-compose.yml`, `render.yaml`, `Procfile`, `.streamlit/`, *Web deployment* section |
 
 > Replace the placeholder author names (Team member 1–4) in the Abstract with the real
 > team members and their contributions before submission.
