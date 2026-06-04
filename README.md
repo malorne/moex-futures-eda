@@ -1,6 +1,11 @@
 # Exploratory Data Analysis of MOEX Futures Market Trades in 2025
 ### Liquidity, Volatility and Open Interest
 
+**🌐 Live demo (deployed & verified over the Internet):**
+[Streamlit app](https://moex-futures-eda.streamlit.app) ·
+[FastAPI](https://moex-eda-api.onrender.com) ·
+[Swagger docs](https://moex-eda-api.onrender.com/docs)
+
 An end-to-end EDA project built **from raw exchange trade data**: ~404 million
 individual MOEX (FORTS) futures trades for 2025 are downloaded, validated, and
 aggregated by us into a clean daily dataset, then analysed with descriptive
@@ -113,9 +118,21 @@ CSV is deleted before the next month.
 
 ## Web deployment
 
-The web interface is containerised and **public-ready** — it is not limited to
-`localhost`. Both services read only the aggregated `data/processed/*.parquet`
-(~11 MB) bundled into the images; the multi-GB raw archives are never shipped.
+**🌐 Live public deployment (verified over the Internet):**
+
+| Service | Public URL | Status |
+|---|---|---|
+| Streamlit app | https://moex-futures-eda.streamlit.app | HTTP 200 |
+| FastAPI | https://moex-eda-api.onrender.com | HTTP 200 |
+| Swagger docs | https://moex-eda-api.onrender.com/docs | HTTP 200 |
+
+Both services read only the aggregated `data/processed/*.parquet` (~11 MB); the
+multi-GB raw archives are never shipped. The app is also containerised to run
+locally or on any VPS (below).
+
+> Render's free tier sleeps after ~15 min idle; the first request then takes ~50 s
+> (cold start), subsequent requests are fast. The `POST /data` demo writes to an
+> ephemeral file that resets on redeploy — the source dataset is never modified.
 
 | Service | Local URL | Container port |
 |---|---|---|
@@ -148,20 +165,22 @@ GitHub, then share.streamlit.io → *New app* → main file `app/streamlit_app.p
 requirements `requirements.txt`. The committed Parquet + `reports/` tables make the
 app fully functional online (the hourly chart falls back to a precomputed table).
 
-Fill these in once deployed:
+Live endpoints (verified over the Internet):
 
 ```text
 ### Streamlit app
-Public URL: <add after deploying to Streamlit Cloud>
+Public URL: https://moex-futures-eda.streamlit.app            (HTTP 200)
 
 ### FastAPI
-Public API URL: <add after deploying to Render>
-Swagger docs:   <public API URL>/docs
+Public API URL: https://moex-eda-api.onrender.com             (HTTP 200)
+Swagger docs:   https://moex-eda-api.onrender.com/docs        (HTTP 200)
 
-Example GET:  <public API URL>/data?symbol=IMOEXF&limit=10
-Example POST: curl -X POST <public API URL>/data -H "Content-Type: application/json" \
-              -d '{"date":"2025-06-02","symbol":"IMOEXF","open_price":100,"high_price":101,
-                   "low_price":99.5,"close_price":100.5,"total_volume":1234,"num_trades":56}'
+Example GET:
+  https://moex-eda-api.onrender.com/data?symbol=IMOEXF&limit=10
+Example POST:
+  curl -X POST https://moex-eda-api.onrender.com/data -H "Content-Type: application/json" \
+    -d '{"date":"2025-06-02","symbol":"IMOEXF","open_price":100,"high_price":101,
+         "low_price":99.5,"close_price":100.5,"total_volume":1234,"num_trades":56}'
 ```
 
 ---
@@ -181,12 +200,18 @@ Prepared for deployment (files present; `docker compose config` validated):
 - render.yaml (Render Blueprint), Procfile, .streamlit/config.toml, requirements-app.txt
 - git repo initialised with an initial commit (ready to push to GitHub)
 
-Public deployment:
-- Streamlit: NOT deployed from this environment (needs your Streamlit Cloud + GitHub login)
-- FastAPI:   NOT deployed from this environment (needs your Render/Railway + GitHub login)
+Public deployment (LIVE over the Internet — verified):
+- Streamlit app: https://moex-futures-eda.streamlit.app        -> HTTP 200 (app shell served)
+- FastAPI:       https://moex-eda-api.onrender.com             -> HTTP 200
+- Swagger docs:  https://moex-eda-api.onrender.com/docs        -> HTTP 200
+  Verified public API checks: GET / (200), /symbols (200), /data?symbol=&limit= (200),
+  /data + date range (200), /stats/{symbol} (200; 404 unknown), POST /data (201),
+  /docs (200), /openapi.json (200).
+  (Streamlit page content renders client-side; the deployed commit is the same one whose
+   8 pages passed Streamlit AppTest, with the underlying data proven live via the API.)
 
-How to make it public: push to GitHub, then deploy via Render Blueprint (API) and
-Streamlit Community Cloud (app); or run `docker compose up --build -d` on a VPS.
+Deployed via: GitHub (github.com/malorne/moex-futures-eda) -> Render (FastAPI) +
+Streamlit Community Cloud (UI).
 ```
 
 > Docker images could not be **built** inside the authoring environment (no Docker
