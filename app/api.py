@@ -18,8 +18,21 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
-ROOT = os.environ.get("MOEX_ROOT") or os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..")
+def _resolve_root() -> str:
+    """Pick the first location that actually contains the aggregated data, so the
+    service works under Docker (MOEX_ROOT=/app), Render's native runtime
+    (/opt/render/project/src), Streamlit Cloud and locally - regardless of how
+    MOEX_ROOT happens to be set."""
+    here = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    marker = os.path.join("data", "processed", "daily_year_2025.parquet")
+    for cand in (os.environ.get("MOEX_ROOT"), here, os.getcwd()):
+        if cand and os.path.exists(os.path.join(cand, marker)):
+            return cand
+    return os.environ.get("MOEX_ROOT") or here
+
+
+ROOT = _resolve_root()
 PROC = os.path.join(ROOT, "data", "processed")
 APPEND_CSV = os.path.join(PROC, "api_appended.csv")
 

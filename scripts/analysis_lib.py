@@ -20,8 +20,19 @@ try:
 except Exception:  # noqa: BLE001
     HAVE_SCIPY = False
 
-ROOT = os.environ.get("MOEX_ROOT") or os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__)))
+def _resolve_root() -> str:
+    """First location that actually contains the aggregated data, so the app works
+    under Docker (MOEX_ROOT=/app), Render native (/opt/render/project/src),
+    Streamlit Cloud and locally - regardless of how MOEX_ROOT is set."""
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    marker = os.path.join("data", "processed", "daily_year_2025.parquet")
+    for cand in (os.environ.get("MOEX_ROOT"), here, os.getcwd()):
+        if cand and os.path.exists(os.path.join(cand, marker)):
+            return cand
+    return os.environ.get("MOEX_ROOT") or here
+
+
+ROOT = _resolve_root()
 PROC = os.path.join(ROOT, "data/processed")
 INTERIM = os.path.join(ROOT, "data/interim")
 
