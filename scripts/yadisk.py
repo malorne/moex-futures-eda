@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Minimal Yandex.Disk public-resource client (stdlib only).
+"""Small helper for public Yandex.Disk folders.
 
 Usage:
   python3 yadisk.py list [--path P] [--depth N]
   python3 yadisk.py get  --path P [--out FILE]
 
-It lists / downloads from a public Yandex.Disk folder without any extra deps,
-so it works even before the venv finishes installing.
+It deliberately uses only the standard library, so the raw data can be listed or
+downloaded before the project environment is installed.
 """
 import argparse
 import json
@@ -20,7 +20,6 @@ import urllib.error
 API = "https://cloud-api.yandex.net/v1/disk/public/resources"
 DOWNLOAD_API = "https://cloud-api.yandex.net/v1/disk/public/resources/download"
 
-# Decoded public URL (urlencode will encode it exactly once).
 DEFAULT_PUBLIC = (
     "https://disk.360.yandex.ru/d/xv-QHgR9iPxyWg/"
     "FUT, OPT_Срочный рынок (01.2025-12.2025)"
@@ -95,7 +94,7 @@ def download(public_key, path, out, timeout=120):
     done = 0
     next_mark = 50 * 1024 * 1024
     expected = 0
-    # per-read socket timeout -> a stalled stream raises instead of hanging
+    # A stalled download should fail loudly instead of hanging forever.
     with urllib.request.urlopen(req, timeout=timeout) as r, open(out, "wb") as f:
         expected = int(r.headers.get("Content-Length") or 0)
         while True:
@@ -108,7 +107,7 @@ def download(public_key, path, out, timeout=120):
                 sp = done / max(time.time() - t0, 1e-9) / 1024 / 1024
                 print(f"  ... {_h(done)} / {_h(expected)}  {sp:.1f} MB/s", flush=True)
                 next_mark += 50 * 1024 * 1024
-    # guard against silent truncation (server closing the stream early)
+    # Catch the case where the server closes the stream before the file is complete.
     if expected and done < expected:
         raise IOError(f"truncated download: got {done} of {expected} bytes")
     print(f"Saved {out}  ({_h(done)})")

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Combine monthly daily files, build the per-symbol summary, select the
-analysis instruments (perpetual '...F' futures) and engineer features.
+"""Prepare the final daily datasets used by the report and app.
 
-Outputs (in data/processed):
-  daily_year_2025.parquet    all symbols, all days (one row per symbol-day)
-  symbol_summary.parquet/.csv per-#SYMBOL liquidity/quality metrics
-  analysis_2025.parquet      selected instruments + engineered features
+The script combines monthly aggregates, builds a per-symbol summary, selects the
+main instruments and adds the features used in the EDA.
 """
 from __future__ import annotations
 
@@ -19,9 +16,7 @@ ROOT = os.environ.get("MOEX_ROOT") or os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))
 PROC = os.path.join(ROOT, "data/processed")
 
-# Analysis set: liquid perpetual ("evergreen", ticker ends in 'F') futures.
-# Asset-class labels follow MOEX ticker naming; confirm base asset via the
-# official MOEX instrument reference before quoting them as fact.
+# Main analysis set: liquid perpetual futures with full-year coverage.
 PERPETUALS = {
     "IMOEXF":  "Index (MOEX Index)",
     "USDRUBF": "Currency (USD/RUB)",
@@ -40,18 +35,18 @@ def load_all_daily() -> pd.DataFrame:
     df = pd.concat((pd.read_parquet(f) for f in files), ignore_index=True)
     df["symbol"] = df["symbol"].astype("string")
     df["date"] = pd.to_datetime(df["date"])
-    # If a symbol-day appears in two files (month boundary), merge it safely.
     df = _merge_boundary_dupes(df)
     df = df.sort_values(["symbol", "date"]).reset_index(drop=True)
     return df, files
 
 
 def _merge_boundary_dupes(df: pd.DataFrame) -> pd.DataFrame:
-    """A (symbol, date) can appear in two monthly files (the evening session of
-    a month's last day lands in the next month's file). Merge such rows: open =
-    earliest file's open, close = latest file's close, sums add, means are
-    trade-weighted. Files are concatenated in chronological order, so 'first'/
-    'last' correctly map to earliest/latest session."""
+    """Merge contract-days that appear on a month boundary.
+
+    MOEX monthly files may include the evening session of the previous trading
+    day. When that creates two rows for the same symbol and date, we keep the
+    true daily open/close, sum activity fields and recompute weighted averages.
+    """
     dup = df.duplicated(["symbol", "date"], keep=False)
     if not dup.any():
         return df
@@ -96,7 +91,7 @@ def symbol_summary(df: pd.DataFrame) -> pd.DataFrame:
         num_trading_days=("date", "nunique"),
         std_close_price=("close_price", "std"),
     )
-    # trade-weighted mean price (exact trade-level mean recovered from daily)
+    # Recover the trade-weighted mean price from daily aggregates.
     wp = df.assign(_p=df["avg_price"] * df["num_trades"])
     s["mean_price"] = (wp.groupby("symbol", observed=True)["_p"].sum()
                        / s["num_deals"])
@@ -123,7 +118,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["direction_imbalance"] = (df["buy_share"] - 0.5).abs()
     first_close = g["close_price"].transform("first")
     df["normalized_close"] = df["close_price"] / first_close * 100.0
-    # calendar features (intraday hour/minute are not available post-aggregation)
+    # Only calendar-level time features remain after daily aggregation.
     df["month"] = df["date"].dt.month
     df["weekday"] = df["date"].dt.weekday
     df["weekday_name"] = df["date"].dt.day_name()
@@ -148,7 +143,6 @@ def main():
             "buy_share_cnt", "has_direction"]
     print(summ[cols].head(15).to_string())
 
-    # selected analysis set
     sel = df[df["symbol"].isin(PERPETUALS)].copy()
     sel["asset_class"] = sel["symbol"].map(PERPETUALS).astype("string")
     sel = add_features(sel)

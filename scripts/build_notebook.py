@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the project Jupyter notebook (notebooks/moex_futures_eda.ipynb).
+"""Build the project notebook.
 
-The notebook is the main report. Heavy logic lives in analysis_lib.py so the
-notebook stays readable; each analytical step is followed by a markdown
-discussion, as required by the grading criteria.
+Most calculations are kept in `analysis_lib.py`; this file assembles the report
+cells in the order used for submission.
 """
 import os
 import nbformat as nbf
@@ -24,41 +23,29 @@ def code(s):
     cells.append(nbf.v4.new_code_cell(s.strip("\n")))
 
 
-# --------------------------------------------------------------------------- #
 md(r"""
 # Exploratory Data Analysis of MOEX Futures Market Trades in 2025
 ### Liquidity, Volatility and Open Interest
 
 ## 1. Abstract / Annotation
 
-This project presents an exploratory data analysis (EDA) of **trade-level data from
-the Moscow Exchange (MOEX) derivatives market (FORTS)** for the **2025 trading year**.
-Starting from the raw monthly trade files (`fut_deal`), which together contain
-**403,559,610 individual futures trades** (≈25–43 million per month), we built a
-reproducible pipeline that streams the compressed `.7z` archives in memory-safe
-chunks, validates data quality, and aggregates the tick-level trades into a clean
-**daily dataset** (one row per contract per day with OHLC prices, traded volume,
-number of trades, open interest, and a buy/sell breakdown). On top of this dataset we
-engineer return, volatility, range, liquidity and order-flow features and study
-**seven liquid "perpetual" futures** that span several asset classes (an equity index,
-three FX rates, gold, and two single-stock contracts). *In this project we do not
-estimate theoretical derivative prices. The goal is exploratory data analysis of
-actual futures trade data: price dynamics, trading volume, number of trades, open
-interest, volatility and buy/sell activity.*
+This project is an exploratory data analysis of MOEX futures trades in 2025. We start
+from monthly raw `fut_deal` files with 403,559,610 individual trades, check the data
+quality, aggregate trades to daily contract-level rows, and then study liquidity,
+volatility, open interest and buy/sell activity for several liquid perpetual futures.
+The goal is not to price derivatives, but to understand what the actual trading data
+shows.
 
-The report covers descriptive statistics, comparative visualisations, and three
-hypotheses. The main findings are: **(H1)** across the universe of contracts, liquidity
-and volatility are essentially **uncorrelated** — the "more liquid ⇒ less volatile"
-hypothesis is **not supported** by these data; **(H2)** days with large price moves
-show **markedly higher** trading activity (**supported**, p ≈ 5·10⁻³¹); and **(H3)**
-the buy/sell imbalance is **modestly higher** on high-volatility days (**supported**,
-p ≈ 0.006). A notable data-driven side finding is that **MOEX weekend trading sessions**
-appear in the data from mid-August 2025 for equity/index/metal instruments but not for
-FX instruments. **Team contributions** (replace placeholders with real names):
-*Team member 1* — data acquisition, chunked pipeline and cleaning; *Team member 2* —
-feature engineering and descriptive statistics; *Team member 3* — visualisations and
-hypothesis testing; *Team member 4* — Streamlit and FastAPI interfaces and report
-writing.
+The report includes descriptive statistics, visual comparisons and three hypotheses.
+In short, liquidity alone does not explain volatility across the whole contract
+universe, large price moves are strongly connected with higher trading activity, and
+buy/sell imbalance is slightly higher on high-volatility days. Team contribution:
+Amirkhan Gareev — data analysis, dataset exploration, feature engineering,
+descriptive statistics, EDA interpretation, figures and tables. Timur Rozovel —
+Streamlit interface, FastAPI REST API, Docker/Render deployment, API testing and web
+interface validation. Konstantin Ryadinskiy — project coordination, README and final
+documentation, public URL integration, Streamlit visual check and final presentation
+preparation.
 """)
 
 md(r"""
@@ -103,7 +90,6 @@ exchange runs **weekend sessions** for some instruments from 2025-08-16 onward. 
 `MOMENT` into a proper `datetime`.
 """)
 
-# --------------------------------------------------------------------------- #
 md("## 3. Data Loading\n\nWe load the self-built aggregated datasets (Parquet) and "
    "the per-month data-quality reports produced by the pipeline. The raw 404M-trade "
    "files are **never** loaded into memory here — they were processed in chunks by "
@@ -134,17 +120,16 @@ md("**Discussion.** Three tables drive the whole report: `daily_all` (the full "
    "seven selected instruments with engineered features, used for most plots and "
    "hypotheses), and `summary` (per-contract metrics used to *select* the instruments).")
 
-# --------------------------------------------------------------------------- #
 md("## 4. Initial Data Overview")
 code(r"""
-# One row per trade in the ORIGINAL file (read only the first rows - file is ~1.6 GB)
+# The raw file is large, so we only show a small sample here.
 raw_sample = pd.read_csv('../data/interim/202501_fut_deal.csv', nrows=5)
 print('Original trade-level data (first 5 rows):')
 display(raw_sample)
 print('Original columns:', list(raw_sample.columns))
 """)
 code(r"""
-# One row per contract-day in our AGGREGATED dataset
+# This is the compact daily table used for analysis.
 print('Aggregated daily data (head):')
 display(daily_all.head())
 print('\nDtypes:'); print(daily_all.dtypes)
@@ -154,7 +139,6 @@ md("**Discussion.** The original file is genuine tick data — every executed tr
    "those hundreds of millions of trades into a compact, analysis-ready daily table "
    "while preserving intraday extremes (high/low) and order-flow (buy/sell split).")
 
-# --------------------------------------------------------------------------- #
 md("## 5. Data Quality Check\n\nWe summarise the per-month quality reports emitted by "
    "the pipeline and verify cleanliness directly on the aggregated table.")
 code(r"""
@@ -176,12 +160,12 @@ print('Invalid prices/volumes/open-interest anywhere:',
       int(qtab[['price<=0','vol<=0','open_int<0']].to_numpy().sum()))
 """)
 code(r"""
-# Direct checks on the aggregated dataset
+# A second check on the final daily table.
 print('NaN per column in aggregated daily dataset:')
 print(daily_all.isna().sum().to_string())
 print('\nDuplicate (symbol, date) rows:', int(daily_all.duplicated(['symbol','date']).sum()))
 
-# Weekend-trading discovery
+# Weekend sessions matter because they affect calendar interpretation.
 ud = pd.Series(daily_all['date'].unique())
 wknd = pd.to_datetime(ud)[pd.to_datetime(ud).dt.weekday >= 5].sort_values()
 print('\nUnique trading dates:', ud.nunique(), '| of which weekend dates:', len(wknd))
@@ -195,14 +179,13 @@ md("**Discussion.** The exchange data are clean: **zero** missing values, **zero
    "session, and **weekend trading sessions appear from 2025-08-16** (visible as ~31 "
    "Saturday/Sunday dates).")
 
-# --------------------------------------------------------------------------- #
 md("## 6. Data Cleanup\n\nWith the source already clean, cleanup reduces to *proving* "
    "cleanliness and ensuring correct types. The pipeline already (a) read every column "
    "with an explicit dtype, (b) parsed `MOMENT` (`YYYYMMDDHHMMSSmmm`) into `datetime`, "
    "and (c) merged the few contract-days that appear in two monthly files at the "
    "month boundary.")
 code(r"""
-# Proof of clean, correctly-typed aggregated data
+# These assertions make the cleanup result explicit.
 assert daily_all.isna().sum().sum() == 0, 'unexpected NaNs'
 assert daily_all.duplicated(['symbol','date']).sum() == 0, 'unexpected dup keys'
 assert str(daily_all['date'].dtype).startswith('datetime'), 'date not datetime'
@@ -216,7 +199,6 @@ md("**Discussion.** All assertions pass, so no rows are dropped or imputed. This
    "*could* create duplicates (concatenating monthly files) is handled by a "
    "trade-weighted merge in `build_features.py`.")
 
-# --------------------------------------------------------------------------- #
 md(r"""
 ## 7. Feature Engineering / Data Transformation
 
@@ -252,7 +234,6 @@ md("**Discussion.** `daily_return`/`abs_return` capture price dynamics and volat
    "`normalized_close` rebases every instrument to 100 so series on very different "
    "price scales can be compared on one chart.")
 
-# --------------------------------------------------------------------------- #
 md("## 8. Descriptive Statistics\n\nWe report mean, median and standard deviation "
    "(plus min/max and quartiles) for the key numeric fields — overall and per "
    "instrument.")
@@ -271,7 +252,6 @@ md("**Discussion.** Mean daily returns are close to zero for all instruments (as
    "distributions are highly right-skewed (mean ≫ median), typical of trading activity "
    "with occasional very busy days.")
 
-# --------------------------------------------------------------------------- #
 md("## 9. Basic Visualizations\n\nFour numeric fields, four chart types: line, "
    "histogram, scatter, box.")
 code("fig = A.fig_normalized_close(df); display(fig); plt.close(fig)")
@@ -290,11 +270,10 @@ md("**What it shows.** Box widths (IQR) and whiskers rank the instruments by "
    "volatility: single-stock futures (GAZPF, SBERF) are widest, FX futures the "
    "tightest, with the index and gold in between.")
 
-# --------------------------------------------------------------------------- #
 md("## 10. Detailed Comparative Overview\n\nFive comparative views: normalized prices, "
    "liquidity, open interest, return correlations, and intraday activity.")
 code(r"""
-# (1) normalized prices are in section 9; here: liquidity comparison
+# Normalized prices were shown above; here we compare liquidity directly.
 fig, gtab = A.fig_liquidity_bars(df); display(gtab.round(0)); display(fig); plt.close(fig)
 """)
 md("**What it shows.** The index and FX perpetuals dominate both average daily volume "
@@ -325,7 +304,6 @@ md("**What it shows.** Intraday (January) activity is concentrated in the main d
    "session, with a secondary bump during the evening session — the classic MOEX "
    "two-session trading day.")
 
-# --------------------------------------------------------------------------- #
 md(r"""
 ## 11. Hypothesis Testing
 
@@ -379,7 +357,6 @@ md("**Conclusion (H3): supported (modestly).** Direction imbalance is higher on 
    "high-volatility days (p ≈ 0.006). On turbulent days aggressor flow leans a little "
    "more to one side, though the effect is small compared with H2.")
 
-# --------------------------------------------------------------------------- #
 md(r"""
 ## 12. Discussion
 

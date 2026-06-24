@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-"""Chunked profiling + daily aggregation for MOEX FORTS `fut_deal` CSV files.
+"""Aggregate raw MOEX futures trades to daily contract-level rows.
 
-The raw file has one row per trade with columns:
-    #SYMBOL, SYSTEM, MOMENT, ID_DEAL, PRICE_DEAL, VOLUME, OPEN_POS, DIRECTION
-where MOMENT is a 17-digit integer YYYYMMDDHHMMSSmmm.
-
-We never load the whole file into memory. We stream it in chunks and:
-  1) accumulate data-quality statistics (rows, NaN, value ranges, invalid
-     values, DIRECTION/SYSTEM domains, MOMENT range, duplicate ID_DEAL);
-  2) build a daily OHLCV+ table, one row per (symbol, date), reconciling
-     open/close across chunks via the global earliest/latest MOMENT.
+The raw files are too large to load at once, so this script streams them in
+chunks. While reading, it collects quality checks and builds one daily OHLCV row
+per contract.
 
 Usage:
     python aggregate_fut_deal.py <csv_path> --month 202501 \
@@ -36,7 +30,7 @@ RAW_DTYPES = {
     "DIRECTION": "string",
 }
 
-# Final daily schema (column order matters for readability / downstream code).
+# Keep the output columns stable for the notebook, app and exported reports.
 DAILY_COLUMNS = [
     "date", "symbol",
     "open_price", "high_price", "low_price", "close_price", "avg_price",
@@ -57,7 +51,7 @@ def _new_quality():
         "op_min": None, "op_max": None, "op_lt0": 0,
         "direction": set(),
         "system": set(),
-        "id_arrays": [],   # list of np.ndarray (ID_DEAL) for duplicate check
+        "id_arrays": [],
     }
 
 
@@ -70,11 +64,11 @@ def _upd_max(cur, val):
 
 
 def _process_chunk(chunk: pd.DataFrame, q: dict, parts: list) -> None:
-    # ---- date as integer YYYYMMDD (MOMENT // 1e9 drops HHMMSSmmm = 9 digits) ----
+    # MOMENT is YYYYMMDDHHMMSSmmm; dropping the last 9 digits leaves YYYYMMDD.
     moment = chunk["MOMENT"].to_numpy()
     chunk["date_int"] = (moment // 1_000_000_000).astype("int32")
 
-    # ---- data-quality accumulation ----
+    # Collect quality checks while the chunk is already in memory.
     q["rows"] += len(chunk)
     q["nan"] = q["nan"].add(chunk.isna().sum(), fill_value=0)
     q["moment_min"] = _upd_min(q["moment_min"], int(moment.min()))
@@ -96,7 +90,6 @@ def _process_chunk(chunk: pd.DataFrame, q: dict, parts: list) -> None:
     q["system"].update(chunk["SYSTEM"].dropna().unique().tolist())
     q["id_arrays"].append(chunk["ID_DEAL"].to_numpy())
 
-    # ---- per (symbol, date) partial aggregation ----
     is_b = (chunk["DIRECTION"] == "B")
     is_s = (chunk["DIRECTION"] == "S")
     chunk["_buy_vol"] = chunk["VOLUME"].where(is_b, 0)
@@ -104,7 +97,7 @@ def _process_chunk(chunk: pd.DataFrame, q: dict, parts: list) -> None:
     chunk["_buy_cnt"] = is_b.astype("int8")
     chunk["_sell_cnt"] = is_s.astype("int8")
 
-    # stable sort by MOMENT so 'first'/'last' = earliest/latest trade in chunk
+    # Stable sorting keeps the first and last trade correct inside each chunk.
     chunk = chunk.sort_values("MOMENT", kind="stable")
     part = chunk.groupby(["#SYMBOL", "date_int"], observed=True).agg(
         open_price=("PRICE_DEAL", "first"),
@@ -143,7 +136,7 @@ def _combine(parts: list) -> pd.DataFrame:
         buy_count=("buy_count", "sum"),
         sell_count=("sell_count", "sum"),
     )
-    # open = price at global earliest MOMENT; close = price at global latest
+    # Open/close must be chosen after all chunks are combined.
     open_df = (allp.sort_values("first_moment", kind="stable")
                .groupby(keys, observed=True)
                .agg(open_price=("open_price", "first")))

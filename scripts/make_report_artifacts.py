@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate every table (CSV) and figure (PNG) used by the report / Streamlit
-app, by calling analysis_lib. Running this end-to-end also validates the whole
-analytical chain. Outputs go to reports/figures and reports/tables.
+"""Export report tables and figures.
+
+The notebook and Streamlit app compute figures on demand, but keeping the same
+outputs in `reports/` makes the project easier to check and submit.
 """
 from __future__ import annotations
 
@@ -47,20 +48,20 @@ def main():
     print(f"analysis rows={len(df)} symbols={df['symbol'].nunique()} "
           f"dates {df['date'].min().date()}..{df['date'].max().date()}")
 
-    # ---- descriptive statistics ----
+    # Descriptive statistics
     save_tab(A.describe_overall(df), "describe_overall.csv")
     for f in ["close_price", "total_volume", "num_trades", "mean_open_pos",
               "daily_return", "relative_range", "volume_per_trade", "buy_share"]:
         save_tab(A.describe_by_symbol(df, f), f"by_symbol_{f}.csv")
     save_tab(summ.head(25), "symbol_summary_top25.csv")
 
-    # ---- basic plots ----
+    # Basic plots
     save_fig(A.fig_normalized_close(df), "basic_normalized_close.png")
     save_fig(A.fig_return_hist(df), "basic_return_hist.png")
     save_fig(A.fig_volume_vs_absreturn(df), "basic_volume_vs_absreturn.png")
     save_fig(A.fig_return_box(df), "basic_return_box.png")
 
-    # ---- detailed comparative overview ----
+    # Detailed overview
     fig, gl = A.fig_liquidity_bars(df)
     save_fig(fig, "overview_liquidity.png")
     save_tab(gl, "overview_liquidity.csv")
@@ -78,7 +79,7 @@ def main():
     except FileNotFoundError as e:
         print("hourly overview skipped (no January CSV):", e)
 
-    # ---- hypotheses ----
+    # Hypotheses
     results = {}
     h1tab, h1corr, fig = A.hypothesis1(daily)
     save_fig(fig, "hyp1_liquidity_vol.png")

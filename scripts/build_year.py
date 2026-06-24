@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Build the full-year daily dataset from monthly fut_deal archives.
+"""Build the daily dataset from the monthly MOEX futures archives.
 
-For each month it: downloads the .7z (with retries), extracts the CSV,
-runs the chunked aggregation, writes daily_<YYYYMM>.parquet +
-quality_<YYYYMM>.json, then deletes the big extracted CSV to save disk.
-Idempotent: months whose daily parquet already exists are skipped.
+For each month we download the archive if needed, extract the CSV, run the
+chunked aggregation and save both the daily table and the quality report. Months
+that are already processed are skipped.
 """
 from __future__ import annotations
 
@@ -87,7 +86,7 @@ def main():
             f"dups={quality['n_id_deal_duplicates']}")
 
         try:
-            os.remove(csv)  # free ~1.5 GB
+            os.remove(csv)  # The extracted CSV is large; keep only the compact output.
         except OSError:
             pass
         log(f"[{m}] removed extracted CSV. === DONE ===")

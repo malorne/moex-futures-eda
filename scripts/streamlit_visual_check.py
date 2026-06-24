@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Visual smoke-check of the PUBLIC Streamlit deployment.
+"""Quick visual check of the public Streamlit app.
 
-Opens the public URL in a headless Chromium (Playwright), clicks through all 8
-sidebar sections, full-page-screenshots each into reports/screenshots/, and flags
-any page that shows a Python traceback / Streamlit error.
+The script opens every sidebar page, saves screenshots and fails if Streamlit
+shows a visible error.
 
 Run:  ./.venv/bin/python scripts/streamlit_visual_check.py
-Deps: pip install playwright && python -m playwright install chromium
 """
 from __future__ import annotations
 
@@ -43,13 +41,13 @@ def wake_if_sleeping(page):
 
 def select_page(page, name):
     sidebar = page.locator('[data-testid="stSidebar"]')
-    # strategy 1: radio role by accessible name
+    # Try the regular radio control first.
     try:
         page.get_by_role("radio", name=name).click(timeout=8000)
         return True
     except Exception:
         pass
-    # strategy 2: click the label text inside the sidebar
+    # If Streamlit markup changes, the visible label is a useful fallback.
     try:
         sidebar.get_by_text(name, exact=True).first.click(timeout=8000)
         return True
@@ -68,9 +66,8 @@ def main():
         page.goto(URL, wait_until="domcontentloaded")
         page.wait_for_timeout(8000)
         wake_if_sleeping(page)
-        # Streamlit Community Cloud serves the app inside an iframe (…/~/+/).
-        # Open that inner document top-level so full-page screenshots capture the
-        # entire scrollable app (not just the iframe viewport).
+        # Streamlit Cloud puts the app in an iframe; opening the inner route gives
+        # full-page screenshots instead of only the iframe viewport.
         page.goto(URL.rstrip("/") + "/~/+/", wait_until="domcontentloaded")
         page.wait_for_timeout(10000)
         page.wait_for_selector('[data-testid="stSidebar"]', timeout=120000)

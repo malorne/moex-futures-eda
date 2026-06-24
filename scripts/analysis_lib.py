@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Reusable analysis layer for the MOEX futures EDA project.
+"""Shared analysis functions for the notebook and Streamlit app.
 
-Both the Jupyter notebook and the Streamlit app import these functions so the
-analytical logic lives in exactly one place. Functions return pandas objects
-and matplotlib Figures (no global state, no forced backend).
+Keeping the calculations here helps the notebook, exported figures and web app
+show the same results.
 """
 from __future__ import annotations
 
@@ -21,9 +20,7 @@ except Exception:  # noqa: BLE001
     HAVE_SCIPY = False
 
 def _resolve_root() -> str:
-    """First location that actually contains the aggregated data, so the app works
-    under Docker (MOEX_ROOT=/app), Render native (/opt/render/project/src),
-    Streamlit Cloud and locally - regardless of how MOEX_ROOT is set."""
+    """Find the project root in local, Docker and hosted environments."""
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     marker = os.path.join("data", "processed", "daily_year_2025.parquet")
     for cand in (os.environ.get("MOEX_ROOT"), here, os.getcwd()):
@@ -36,7 +33,7 @@ ROOT = _resolve_root()
 PROC = os.path.join(ROOT, "data/processed")
 INTERIM = os.path.join(ROOT, "data/interim")
 
-# Display order grouped by asset class, plus stable colors for the 7 perpetuals.
+# Stable order and colors make plots easier to compare across pages.
 SYMBOL_ORDER = ["IMOEXF", "USDRUBF", "CNYRUBF", "EURRUBF",
                 "GLDRUBF", "GAZPF", "SBERF"]
 ASSET_CLASS = {
@@ -53,9 +50,7 @@ NUMERIC_FIELDS = [
 ]
 
 
-# --------------------------------------------------------------------------- #
-# Loaders
-# --------------------------------------------------------------------------- #
+# Data loading
 def load_analysis() -> pd.DataFrame:
     df = pd.read_parquet(os.path.join(PROC, "analysis_2025.parquet"))
     df["date"] = pd.to_datetime(df["date"])
@@ -79,9 +74,7 @@ def _ordered(df: pd.DataFrame) -> list:
     return present
 
 
-# --------------------------------------------------------------------------- #
 # Descriptive statistics
-# --------------------------------------------------------------------------- #
 def describe_overall(df: pd.DataFrame, fields=None) -> pd.DataFrame:
     fields = fields or NUMERIC_FIELDS
     fields = [f for f in fields if f in df.columns]
@@ -100,9 +93,7 @@ def describe_by_symbol(df: pd.DataFrame, field: str) -> pd.DataFrame:
     return out.reindex(_ordered(df))
 
 
-# --------------------------------------------------------------------------- #
-# Basic plots (>=4 numeric fields, >=3 chart types)
-# --------------------------------------------------------------------------- #
+# Basic plots
 def fig_normalized_close(df: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(11, 5.5))
     for s in _ordered(df):
@@ -158,9 +149,7 @@ def fig_return_box(df: pd.DataFrame):
     return fig
 
 
-# --------------------------------------------------------------------------- #
-# Detailed comparative overview (>=4 comparisons)
-# --------------------------------------------------------------------------- #
+# Detailed comparisons
 def fig_liquidity_bars(df: pd.DataFrame):
     order = _ordered(df)
     g = df.groupby("symbol", observed=True).agg(
@@ -222,9 +211,7 @@ def buysell_overview(df: pd.DataFrame):
 
 
 def hourly_activity(jan_csv=None, symbols=None, chunksize=4_000_000):
-    """Intraday trade activity by hour, computed from the January raw file
-    (the daily dataset has no intraday resolution). Restricted to the
-    selected instruments by default."""
+    """Compute the hourly profile from January raw trades."""
     jan_csv = jan_csv or os.path.join(INTERIM, "202501_fut_deal.csv")
     symbols = set(symbols or SYMBOL_ORDER)
     acc = {}
@@ -257,9 +244,7 @@ def hourly_activity(jan_csv=None, symbols=None, chunksize=4_000_000):
 
 
 def hourly_activity_cached():
-    """Load a precomputed hourly profile (reports/tables/overview_hourly.csv) and
-    plot it - used when the raw January CSV is unavailable (e.g. a cloud host that
-    only ships the aggregated data plus the small precomputed tables)."""
+    """Use the saved hourly table when raw trades are not shipped with the app."""
     out = pd.read_csv(os.path.join(ROOT, "reports", "tables", "overview_hourly.csv"),
                       index_col=0)
     fig, ax = plt.subplots(figsize=(11, 5))
@@ -273,12 +258,9 @@ def hourly_activity_cached():
     return out, fig
 
 
-# --------------------------------------------------------------------------- #
 # Hypotheses
-# --------------------------------------------------------------------------- #
 def hypothesis1(daily_all: pd.DataFrame, min_days=40, min_deals=50_000):
-    """H1: more liquid contracts have lower volatility.
-    Cross-section over all sufficiently-liquid contracts (not just the 7)."""
+    """H1: compare liquidity and volatility across sufficiently active contracts."""
     d = daily_all.sort_values(["symbol", "date"]).copy()
     d["ret"] = (d.groupby("symbol", observed=True)["close_price"]
                 .pct_change(fill_method=None) * 100)
@@ -347,7 +329,7 @@ def hypothesis2(df: pd.DataFrame, q=0.90):
     table = pd.DataFrame(rows).pivot(index="metric", columns="group",
                                      values=["mean", "median", "std"])
 
-    # scale-free comparison: within-symbol z-score of volume
+    # Z-scores make volumes comparable across instruments with different scales.
     d["z_volume"] = _zscore_within(d, "total_volume")
     d["z_trades"] = _zscore_within(d, "num_trades")
     test = {}
@@ -373,7 +355,7 @@ def hypothesis2(df: pd.DataFrame, q=0.90):
 
 
 def hypothesis3(df: pd.DataFrame, q=0.90):
-    """H3: buy/sell imbalance is higher on high-volatility days."""
+    """H3: compare order-flow imbalance on normal and high-volatility days."""
     d = df.dropna(subset=["abs_return", "direction_imbalance"]).copy()
     thr = d.groupby("symbol", observed=True)["abs_return"].transform(
         lambda s: s.quantile(q))
